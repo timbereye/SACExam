@@ -22,7 +22,7 @@ import pdb
 
 # split Chinese with English
 def mixed_segmentation(in_str, rm_punc=False):
-    in_str = str(in_str).decode('utf-8').lower().strip()
+    in_str = str(in_str).lower().strip()
     segs_out = []
     temp_str = ""
     sp_char = ['-', ':', '_', '*', '^', '/', '\\', '~', '`', '+', '=',
@@ -50,7 +50,7 @@ def mixed_segmentation(in_str, rm_punc=False):
 
 # remove punctuation
 def remove_punctuation(in_str):
-    in_str = str(in_str).decode('utf-8').lower().strip()
+    in_str = str(in_str).lower().strip()
     sp_char = ['-', ':', '_', '*', '^', '/', '\\', '~', '`', '+', '=',
                '，', '。', '：', '？', '！', '“', '”', '；', '’', '《', '》', '……', '·', '、',
                '「', '」', '（', '）', '－', '～', '『', '』']
@@ -99,7 +99,7 @@ def evaluate(ground_truth_file, prediction_file):
                     skip_count += 1
                     continue
 
-                prediction = str(prediction_file[query_id]).decode('utf-8')
+                prediction = str(prediction_file[query_id])
                 f1 += calc_f1_score(answers, prediction)
                 em += calc_em_score(answers, prediction)
 
@@ -140,8 +140,8 @@ if __name__ == '__main__':
     parser.add_argument('dataset_file', help='Official dataset file')
     parser.add_argument('prediction_file', help='Your prediction File')
     args = parser.parse_args()
-    ground_truth_file = json.load(tf.gfile.Open(args.dataset_file, 'rb'))
-    prediction_file = json.load(tf.gfile.Open(args.prediction_file, 'rb'))
+    ground_truth_file = json.load(tf.gfile.Open(args.dataset_file, 'r'))
+    prediction_file = json.load(tf.gfile.Open(args.prediction_file, 'r'))
     F1, EM, TOTAL, SKIP = evaluate(ground_truth_file, prediction_file)
     AVG = (EM + F1) * 0.5
     output_result = OrderedDict()
