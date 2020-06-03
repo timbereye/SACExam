@@ -13,7 +13,7 @@ import re
 import argparse
 import json
 import sys
-
+import tensorflow as tf
 # reload(sys)
 # sys.setdefaultencoding('utf8')
 import nltk
@@ -140,8 +140,8 @@ if __name__ == '__main__':
     parser.add_argument('dataset_file', help='Official dataset file')
     parser.add_argument('prediction_file', help='Your prediction File')
     args = parser.parse_args()
-    ground_truth_file = json.load(open(args.dataset_file, 'rb'))
-    prediction_file = json.load(open(args.prediction_file, 'rb'))
+    ground_truth_file = json.load(tf.gfile.Open(args.dataset_file, 'rb'))
+    prediction_file = json.load(tf.gfile.Open(args.prediction_file, 'rb'))
     F1, EM, TOTAL, SKIP = evaluate(ground_truth_file, prediction_file)
     AVG = (EM + F1) * 0.5
     output_result = OrderedDict()
