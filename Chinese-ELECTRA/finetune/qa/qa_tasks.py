@@ -203,12 +203,9 @@ class QATask(task.Task):
                 if is_whitespace(c):
                     prev_is_whitespace = True
                 else:
-                    if prev_is_whitespace or prev_is_chinese:
+                    if prev_is_whitespace or prev_is_chinese or is_chinese_char(c):
                         doc_tokens.append(c)
                         prev_is_chinese = True if is_chinese_char(c) else False
-                    elif is_chinese_char(c):
-                        doc_tokens.append(c)
-                        prev_is_chinese = True
                     else:
                         doc_tokens[-1] += c
                         prev_is_chinese = False
@@ -259,10 +256,16 @@ class QATask(task.Task):
                     #
                     # Note that this means for training mode, every example is NOT
                     # guaranteed to be preserved.
-                    actual_text = " ".join(
-                        doc_tokens[start_position:(end_position + 1)])
-                    cleaned_answer_text = " ".join(
-                        tokenization.whitespace_tokenize(orig_answer_text))
+                    if self.name in ["sacqa", "cmrc2018"]:  # for chinese, no whitespace needed
+                        actual_text = "".join(
+                            doc_tokens[start_position:(end_position + 1)])
+                        cleaned_answer_text = "".join(
+                            tokenization.whitespace_tokenize(orig_answer_text))
+                    else:
+                        actual_text = " ".join(
+                            doc_tokens[start_position:(end_position + 1)])
+                        cleaned_answer_text = " ".join(
+                            tokenization.whitespace_tokenize(orig_answer_text))
                     actual_text = actual_text.lower()
                     cleaned_answer_text = cleaned_answer_text.lower()
                     if actual_text.find(cleaned_answer_text) == -1:
