@@ -27,6 +27,7 @@ import tensorflow.compat.v1 as tf
 
 import configure_finetuning
 from finetune import feature_spec
+from finetune.qa import qa_tasks
 from util import utils
 
 
@@ -38,7 +39,9 @@ class Preprocessor(object):
         self._tasks = tasks
         self._name_to_task = {task.name: task for task in tasks}
 
-        self._feature_specs = feature_spec.get_shared_feature_specs(config)
+        # multi-choice mrc overwrites input_ids, input_mask, etc.
+        if not any([isinstance(x, qa_tasks.MQATask) for x in tasks]):
+            self._feature_specs = feature_spec.get_shared_feature_specs(config)
         for task in tasks:
             self._feature_specs += task.get_feature_specs()
         self._name_to_feature_config = {

@@ -92,6 +92,14 @@ class FinetuningConfig(object):
         self.qa_na_threshold = -2.75  # threshold for "no answer" when writing SQuAD
         # 2.0 test outputs
 
+        # for multi-choice mrc
+        self.evidences_top_k = 2  # top k evidences retrieved from knowledge base
+        self.max_options_num = 4  # may be more than 4 with "combination" single questions
+        self.answer_options = ["A", "B", "C", "D"]  # final answer options, sorted as normal
+        self.max_len1 = 128  # max length of question
+        self.max_len2 = 128  # max length of evidence
+        self.max_len3 = 64  # max length of option
+
         # TPU settings
         self.use_tpu = False
         self.num_tpu_cores = 1

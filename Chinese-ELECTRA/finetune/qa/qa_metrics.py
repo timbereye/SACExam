@@ -28,6 +28,7 @@ from finetune import scorer
 from finetune.qa import mrqa_official_eval
 from finetune.qa import squad_official_eval
 from finetune.qa import squad_official_eval_v1
+from finetune.qa import mqa_eval
 from model import tokenization
 from util import utils
 
@@ -203,7 +204,7 @@ class SpanBasedQAScorer(scorer.Scorer):
 
                 # Clean whitespace
                 tok_text = tok_text.strip()
-                if self._name in ["sacqa", "cmrc2018"]:  # for chinese, no whitespace needed
+                if self._name in ["drcd", "cmrc2018"]:  # for chinese, no whitespace needed
                     tok_text = "".join(tok_text.split())
                     orig_text = "".join(orig_tokens)
                 else:
@@ -403,3 +404,96 @@ def get_final_text(config: configure_finetuning.FinetuningConfig, pred_text,
 
     output_text = orig_text[orig_start_position:(orig_end_position + 1)]
     return output_text
+
+
+RawResult_MQA = collections.namedtuple("RawResult_MQA", ["unique_id", "logits"])
+
+
+class MQAScorer(scorer.Scorer):
+    """Runs evaluation for SAC task etc."""
+
+    def __init__(self, config: configure_finetuning.FinetuningConfig, task, split,
+                 v2):
+        super(MQAScorer, self).__init__()
+        self._config = config
+        self._task = task
+        self._name = task.name
+        self._split = split
+        self._v2 = v2
+        self._all_results = []
+        self._total_loss = 0
+        self._split = split
+        self._eval_examples = task.get_examples(split)
+
+    def update(self, results):
+        super(MQAScorer, self).update(results)
+        self._all_results.append(
+            RawResult_MQA(
+                unique_id=results["eid"],
+                logits=results["logits"],
+            ))
+        self._total_loss += results["loss"]
+
+    def get_loss(self):
+        return self._total_loss / len(self._all_results)
+
+    def _get_results(self):
+        self.write_predictions()
+        return sorted(mqa_eval.main(
+            self._config, self._split, self._name).items())
+
+    def write_predictions(self):
+        """Write final predictions to the json file."""
+        unique_id_to_result = {}
+        for result in self._all_results:
+            unique_id_to_result[result.unique_id] = result
+
+        _PrelimPrediction = collections.namedtuple(  # pylint: disable=invalid-name
+            "PrelimPrediction",
+            ["feature_index", "start_index", "end_index", "start_logits"])
+
+        all_predictions = collections.OrderedDict()
+
+        for example in self._eval_examples:
+            example_id = example.qas_id
+            features = self._task.featurize(example, False, for_eval=True)[0]
+            prelim_predictions = []
+            result = unique_id_to_result[features[self._name + "_eid"]]
+            max_index = np.argmax(result.logits)
+            decoded_indexes = []
+            for i in range(len(self._config.max_options_num) - 1, -1, -1):
+                if max_index >= 2 ** i:
+                    decoded_indexes.append(i)
+                    max_index -= i
+                elif max_index <= 0:
+                    break
+            options_tags = features[self._name + "_options_tags"]
+            combination_options = features[self._name + "_combination_options"]
+            answer = None
+            if features[self._name + "_type"] == "0":
+                # 异常捕获，如果有异常要解决掉，下同
+                if len(decoded_indexes) != 1 or decoded_indexes[0] >= len(options_tags):
+                    utils.log("decode single answer error, set answer C for default.")
+                    answer = "C"
+                else:
+                    answer = options_tags[decoded_indexes[0]]
+            elif features[self._name + "_type"] == "1":
+                if len(decoded_indexes) == 0 or decoded_indexes[0] >= len(options_tags):
+                    utils.log("decode combination single answer error, set answer C for default.")
+                    answer = "C"
+                else:
+                    comb_ops_pred = []
+                    for ind in decoded_indexes:
+                        comb_ops_pred.append(options_tags[ind])
+                    answer = None
+                    for op, comb_ops in combination_options.items():
+                        if set(comb_ops) == set(comb_ops_pred):
+                            answer = op
+                            break
+                    if answer is None:
+                        utils.log("decode combination single answer error, set answer C for default.")
+                        answer = "C"
+            all_predictions[example_id] = [answer] if answer else []
+
+        utils.write_json(dict(all_predictions),
+                         self._config.qa_preds_file(self._name + "_" + self._split))

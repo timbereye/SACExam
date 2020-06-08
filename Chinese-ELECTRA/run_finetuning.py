@@ -28,6 +28,7 @@ import tensorflow.compat.v1 as tf
 import configure_finetuning
 from finetune import preprocessing
 from finetune import task_builder
+from finetune.qa import qa_tasks
 from model import modeling
 from model import optimization
 from util import training_utils
@@ -48,15 +49,31 @@ class FinetuningModel(object):
             bert_config.hidden_size = 144
             bert_config.intermediate_size = 144 * 4
             bert_config.num_attention_heads = 4
-        assert config.max_seq_length <= bert_config.max_position_embeddings
-        bert_model = modeling.BertModel(
-            bert_config=bert_config,
-            is_training=is_training,
-            input_ids=features["input_ids"],
-            input_mask=features["input_mask"],
-            token_type_ids=features["segment_ids"],
-            use_one_hot_embeddings=config.use_tpu,
-            embedding_size=config.embedding_size)
+
+        # multi-choice mrc
+        if any([isinstance(x, qa_tasks.MQATask) for x in tasks]):
+            seq_len = config.max_len1 + config.max_len2 + config.max_len3
+            assert seq_len <= bert_config.max_position_embeddings
+            bs, total_len = modeling.get_shape_list(features["input_ids"], expected_rank=2)
+            to_shape = [bs * config.max_options_num * config.evidences_top_k, seq_len]
+            bert_model = modeling.BertModel(
+                bert_config=bert_config,
+                is_training=is_training,
+                input_ids=tf.reshape(features["input_ids"], to_shape),
+                input_mask=tf.reshape(features["input_mask"], to_shape),
+                token_type_ids=tf.reshape(features["segment_ids"], to_shape),
+                use_one_hot_embeddings=config.use_tpu,
+                embedding_size=config.embedding_size)
+        else:
+            assert config.max_seq_length <= bert_config.max_position_embeddings
+            bert_model = modeling.BertModel(
+                bert_config=bert_config,
+                is_training=is_training,
+                input_ids=features["input_ids"],
+                input_mask=features["input_mask"],
+                token_type_ids=features["segment_ids"],
+                use_one_hot_embeddings=config.use_tpu,
+                embedding_size=config.embedding_size)
         percent_done = (tf.cast(tf.train.get_or_create_global_step(), tf.float32) /
                         tf.cast(num_train_steps, tf.float32))
 
@@ -300,7 +317,7 @@ def run_finetuning(config: configure_finetuning.FinetuningConfig):
                                 preds[q] = ""
                         utils.write_json(preds, config.test_predictions(
                             task.name, "dev", trial))
-                    elif task.name == "cmrc2018" or task.name == "drcd":
+                    elif task.name in ["cmrc2018", "drcd", "sac"]:
                         scorer = model_runner.evaluate_task(task, "dev", False)
                         scorer.write_predictions()
                         preds = utils.load_json(config.qa_preds_file(task.name + "_dev"))
@@ -334,7 +351,7 @@ def run_finetuning(config: configure_finetuning.FinetuningConfig):
                                 preds[q] = ""
                         utils.write_json(preds, config.test_predictions(
                             task.name, "eval", trial))
-                    elif task.name == "cmrc2018" or task.name == "drcd":
+                    elif task.name in ["cmrc2018", "drcd"]:
                         scorer = model_runner.evaluate_task(task, "eval", False)
                         scorer.write_predictions()
                         preds = utils.load_json(config.qa_preds_file(task.name + "_eval"))
