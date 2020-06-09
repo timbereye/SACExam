@@ -93,7 +93,7 @@ class FinetuningConfig(object):
         # 2.0 test outputs
 
         # for multi-choice mrc
-        self.evidences_top_k = 2  # top k evidences retrieved from knowledge base
+        self.evidences_top_k = 1  # top k evidences retrieved from knowledge base
         self.max_options_num = 4  # may be more than 4 with "combination" single questions
         self.answer_options = ["A", "B", "C", "D"]  # final answer options, sorted as normal
         self.max_len1 = 64  # max length of question
