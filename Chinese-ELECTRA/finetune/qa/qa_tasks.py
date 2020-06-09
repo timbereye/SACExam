@@ -776,7 +776,9 @@ class MQATask(task.Task):
                 assert answers[0] in combination_options_keys
                 assert set(combination_options_keys) == set(self.config.answer_options)
                 for k, comb_ops in combination_options.items():
-                    assert len(set(comb_ops)) == len(comb_ops)
+                    if len(set(comb_ops)) != len(comb_ops):  # data bug fix
+                        print("fix [len(set(comb_ops)) != len(comb_ops)]:{}".format(sample))
+                        combination_options[k] = list(sorted(set(comb_ops)))
                     for op in comb_ops:
                         assert op in options_keys
             else:
