@@ -39,7 +39,7 @@ def read_answers(gold_file):
         for i, line in enumerate(f):
             sample = json.loads(line)
             answers[sample["key"]] = sample["answers"]
-            answers[sample["key"]] = sample
+            samples[sample["key"]] = sample
     return answers, samples
 
 
