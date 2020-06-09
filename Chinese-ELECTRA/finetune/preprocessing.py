@@ -38,6 +38,7 @@ class Preprocessor(object):
         self._config = config
         self._tasks = tasks
         self._name_to_task = {task.name: task for task in tasks}
+        self._feature_specs = []
 
         # multi-choice mrc overwrites input_ids, input_mask, etc.
         if not any([isinstance(x, qa_tasks.MQATask) for x in tasks]):
