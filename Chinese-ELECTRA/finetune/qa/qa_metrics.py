@@ -474,10 +474,6 @@ class MQAScorer(scorer.Scorer):
                 # 异常捕获，如果有异常要解决掉，下同
                 if len(decoded_indexes) != 1 or decoded_indexes[0] >= len(options_tags):
                     utils.log("decode single answer error, set answer C for default.")
-                    print("decoded_indexes:", decoded_indexes)
-                    print("result.logits:", result.logits)
-                    print("max_index:", max_index)
-                    print("mask:", features[self._name + "_answer_mask"])
                     answer = "C"
                 else:
                     answer = options_tags[decoded_indexes[0]]
@@ -485,10 +481,6 @@ class MQAScorer(scorer.Scorer):
                 if len(decoded_indexes) == 0 or decoded_indexes[0] >= len(options_tags):
                     utils.log("decode combination single answer error, set answer C for default.")
                     answer = "C"
-                    print("decoded_indexes:", decoded_indexes)
-                    print("result.logits:", result.logits)
-                    print("max_index:", max_index)
-                    print("mask:", features[self._name + "_answer_mask"])
                 else:
                     comb_ops_pred = []
                     for ind in decoded_indexes:
@@ -501,11 +493,6 @@ class MQAScorer(scorer.Scorer):
                     if answer is None:
                         utils.log("decode combination single answer error, set answer C for default.")
                         answer = "C"
-                        print("decoded_indexes:", decoded_indexes)
-                        print("result.logits:", result.logits)
-                        print("combination_options:", combination_options)
-                        print("max_index:", max_index)
-                        print("mask:", features[self._name + "_answer_mask"])
             all_predictions[example_id] = [answer] if answer else []
 
         utils.write_json(dict(all_predictions),
