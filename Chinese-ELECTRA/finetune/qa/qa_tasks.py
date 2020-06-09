@@ -701,8 +701,8 @@ class MQAExample(task.Example):
         self.eid = eid
         self.qas_id = qas_id
         self.qid = qid
-        self.question_text = question_text,
-        self.type = _type,
+        self.question_text = question_text
+        self.type = _type
         self.options = options
         self.combination_options = combination_options
         self.evidences = evidences
