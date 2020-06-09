@@ -57,5 +57,5 @@ def evaluate(answers, predictions):
 
 def main(config: configure_finetuning.FinetuningConfig, split, task_name):
     answers = read_answers(os.path.join(config.raw_data_dir(task_name), split + ".json"))
-    predictions = read_predictions(config.qa_preds_file(task_name))
+    predictions = read_predictions(config.qa_preds_file(task_name + "_" + split))
     return evaluate(answers, predictions)
