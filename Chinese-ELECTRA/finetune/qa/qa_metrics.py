@@ -464,7 +464,7 @@ class MQAScorer(scorer.Scorer):
             for i in range(self._config.max_options_num - 1, -1, -1):
                 if _max_index >= 2 ** i:
                     decoded_indexes.append(i)
-                    _max_index -= i
+                    _max_index -= 2 ** i
                 elif _max_index <= 0:
                     break
             options_tags = features[self._name + "_options_tags"]
