@@ -318,7 +318,7 @@ def run_finetuning(config: configure_finetuning.FinetuningConfig):
                         utils.write_json(preds, config.test_predictions(
                             task.name, "dev", trial))
                     elif task.name in ["cmrc2018", "drcd", "sac"]:
-                        scorer = model_runner.evaluate_task(task, "dev", False)
+                        scorer = model_runner.evaluate_task(task, "dev", True)
                         scorer.write_predictions()
                         preds = utils.load_json(config.qa_preds_file(task.name + "_dev"))
                         # utils.write_json(preds, config.test_predictions(task.name, "dev", trial))
