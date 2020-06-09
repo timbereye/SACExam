@@ -78,5 +78,7 @@ def get_task(config: configure_finetuning.FinetuningConfig, task_name,
         return qa_tasks.CMRC2018(config, tokenizer)
     elif task_name == "drcd":
         return qa_tasks.DRCD(config, tokenizer)
+    elif task_name == "sac":
+        return qa_tasks.SAC(config, tokenizer)
     else:
         raise ValueError("Unknown task " + task_name)
