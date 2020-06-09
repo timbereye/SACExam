@@ -459,12 +459,13 @@ class MQAScorer(scorer.Scorer):
             features = self._task.featurize(example, False, for_eval=True)[0]
             result = unique_id_to_result[features[self._name + "_eid"]]
             max_index = np.argmax(result.logits)
+            _max_index = max_index
             decoded_indexes = []
             for i in range(self._config.max_options_num - 1, -1, -1):
-                if max_index >= 2 ** i:
+                if _max_index >= 2 ** i:
                     decoded_indexes.append(i)
-                    max_index -= i
-                elif max_index <= 0:
+                    _max_index -= i
+                elif _max_index <= 0:
                     break
             options_tags = features[self._name + "_options_tags"]
             combination_options = features[self._name + "_combination_options"]
