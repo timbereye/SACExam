@@ -461,7 +461,7 @@ class MQAScorer(scorer.Scorer):
             result = unique_id_to_result[features[self._name + "_eid"]]
             max_index = np.argmax(result.logits)
             decoded_indexes = []
-            for i in range(len(self._config.max_options_num) - 1, -1, -1):
+            for i in range(self._config.max_options_num - 1, -1, -1):
                 if max_index >= 2 ** i:
                     decoded_indexes.append(i)
                     max_index -= i
