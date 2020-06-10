@@ -96,9 +96,9 @@ class FinetuningConfig(object):
         self.evidences_top_k = 1  # top k evidences retrieved from knowledge base
         self.max_options_num = 5  # may be more than 4 with "combination" single questions
         self.answer_options = ["A", "B", "C", "D"]  # final answer options, sorted as normal
-        self.max_len1 = 64  # max length of question
-        self.max_len2 = 64  # max length of option
-        self.max_len3 = 128  # max length of evidence
+        self.max_len1 = 128  # max length of question
+        self.max_len2 = 96  # max length of option
+        self.max_len3 = 288  # max length of evidence
 
         # TPU settings
         self.use_tpu = False
