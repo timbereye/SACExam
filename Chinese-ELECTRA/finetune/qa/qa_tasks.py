@@ -746,13 +746,31 @@ class MQATask(task.Task):
         combination_options = sample.get("combination_options", None)
         combination_options = combination_options if combination_options else None
         evidences = sample["evidences"]
+        qas_id = sample["key"] if "key" in sample else None
+        qid = sample["qid"] if "qid" in sample else None
         # data check
         options_keys = options.keys()
         evidences_keys = evidences.keys()
         for _, e_list in evidences.items():
             assert len(e_list) == self.config.evidences_top_k
         assert set(options_keys) == set(evidences_keys)
-        assert len(options_keys) <= self.config.max_options_num
+        if len(options_keys) > self.config.max_options_num:  # not support
+            return
+            # if split == "train":  # pass the example if training
+            #     return
+            # else:  # set useless example if not training
+            #     example = MQAExample(task_name=self.name,
+            #                          eid=len(examples),
+            #                          qas_id=qas_id,
+            #                          qid=qid,
+            #                          question_text="",
+            #                          _type="0",
+            #                          options={"C": ""},
+            #                          combination_options=None,
+            #                          evidences={"C": [""] * self.config.evidences_top_k},
+            #                          answers=None)
+            #     examples.append(example)
+            #     return
         if _type == "0" or _type == "2":
             assert combination_options is None
         elif _type == "1":  # 组合单选题
@@ -781,9 +799,6 @@ class MQATask(task.Task):
                         assert op in options_keys
             else:
                 raise Exception("Not implemented for _type not in ('0', '1').")
-
-        qas_id = sample["key"] if "key" in sample else None
-        qid = sample["qid"] if "qid" in sample else None
 
         example = MQAExample(task_name=self.name,
                              eid=len(examples),
