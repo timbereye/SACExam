@@ -448,10 +448,6 @@ class MQAScorer(scorer.Scorer):
         for result in self._all_results:
             unique_id_to_result[result.unique_id] = result
 
-        _PrelimPrediction = collections.namedtuple(  # pylint: disable=invalid-name
-            "PrelimPrediction",
-            ["feature_index", "start_index", "end_index", "start_logits"])
-
         all_predictions = collections.OrderedDict()
 
         for example in self._eval_examples:
