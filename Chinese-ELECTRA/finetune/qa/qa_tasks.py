@@ -811,6 +811,7 @@ class MQATask(task.Task):
                              combination_options=combination_options,
                              evidences=evidences,
                              answers=answers)
+        print(example.__dict__)
         examples.append(example)
 
     def get_feature_specs(self):
@@ -952,7 +953,8 @@ class MQATask(task.Task):
             features.update({
                 self.name + "_answer_ids": answer_ids,
             })
-
+        print(features)
+        print("----------------------------------------------------")
         return [features]
 
     def get_prediction_module(self, bert_model, features, is_training,
