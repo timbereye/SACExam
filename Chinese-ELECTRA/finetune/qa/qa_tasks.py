@@ -754,6 +754,7 @@ class MQATask(task.Task):
             assert len(e_list) == self.config.evidences_top_k
         assert set(options_keys) == set(evidences_keys)
         if len(options_keys) > self.config.max_options_num:  # not support
+            example_failures[0] += 1
             print(sample)
             return
             # if split == "train":  # pass the example if training
@@ -880,7 +881,7 @@ class MQATask(task.Task):
                 input_mask.append(_input_mask)
                 segment_ids.append(_segment_ids)
 
-        # padding for max options number, it may be used in "combination" case.
+        # padding for max options number, it may be used for "combination" case.
         padding_num = self.config.max_options_num - len(options_tags)
         while padding_num:
             for _ in range(self.config.evidences_top_k):
