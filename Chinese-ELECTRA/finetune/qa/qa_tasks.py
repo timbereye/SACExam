@@ -755,6 +755,7 @@ class MQATask(task.Task):
             assert len(e_list) == self.config.evidences_top_k
         assert set(options_keys) == set(evidences_keys)
         if len(options_keys) > self.config.max_options_num:  # not support
+            print(sample)
             return
             # if split == "train":  # pass the example if training
             #     return
