@@ -52,7 +52,7 @@ class FinetuningModel(object):
 
         # multi-choice mrc
         if any([isinstance(x, qa_tasks.MQATask) for x in tasks]):
-            seq_len = config.max_len1 + config.max_len2 + config.max_len3
+            seq_len = config.max_seq_length
             assert seq_len <= bert_config.max_position_embeddings
             bs, total_len = modeling.get_shape_list(features["input_ids"], expected_rank=2)
             to_shape = [bs * config.max_options_num * config.evidences_top_k, seq_len]
