@@ -841,8 +841,9 @@ class MQATask(task.Task):
                 op_info_tokens = op_info_tokens[0: self.config.max_len2]
             for ev in example.evidences[op]:
                 ev_tokens = self._tokenizer.tokenize(ev)
-                if len(ev_tokens) > self.config.max_len3 - 1:
-                    ev_tokens = ev_tokens[0:(self.config.max_seq_length - len(op_info_tokens) - len(question_tokens) - 4)]
+                ev_max_len = self.config.max_seq_length - len(op_info_tokens) - len(question_tokens) - 4
+                if len(ev_tokens) > ev_max_len:
+                    ev_tokens = ev_tokens[0: ev_max_len]
                 _tokens = []
                 _segment_ids = []
                 _tokens.append("[CLS]")
