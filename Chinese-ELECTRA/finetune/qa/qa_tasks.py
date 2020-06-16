@@ -737,7 +737,6 @@ class MQATask(task.Task):
         self._tokenizer = tokenizer
         self._examples = {}
         self.v2 = v2
-        self.max_seq_len = self.config.max_len1 + self.config.max_len2 + self.config.max_len3
 
     def _add_examples(self, examples, example_failures, sample, split):
         question_text = sample["question"]
@@ -814,7 +813,7 @@ class MQATask(task.Task):
         examples.append(example)
 
     def get_feature_specs(self):
-        shape = [self.config.max_options_num * self.config.evidences_top_k * self.max_seq_len]
+        shape = [self.config.max_options_num * self.config.evidences_top_k * self.config.max_seq_length]
         return [
             feature_spec.FeatureSpec("input_ids", shape),
             feature_spec.FeatureSpec("input_mask", shape),
@@ -832,18 +831,18 @@ class MQATask(task.Task):
         segment_ids = []
         input_mask = []
         question_tokens = self._tokenizer.tokenize(example.question_text)
-        if len(question_tokens) > self.config.max_len1 - 2:
-            question_tokens = question_tokens[0:(self.config.max_len1 - 2)]
+        if len(question_tokens) > self.config.max_len1:
+            question_tokens = question_tokens[0: self.config.max_len1]
         options_tags = sorted(example.options)
         for op in options_tags:
             op_info = example.options[op]
             op_info_tokens = self._tokenizer.tokenize(op_info)
-            if len(op_info_tokens) > self.config.max_len2 - 1:
-                op_info_tokens = op_info_tokens[0:(self.config.max_len2 - 1)]
+            if len(op_info_tokens) > self.config.max_len2:
+                op_info_tokens = op_info_tokens[0: self.config.max_len2]
             for ev in example.evidences[op]:
                 ev_tokens = self._tokenizer.tokenize(ev)
                 if len(ev_tokens) > self.config.max_len3 - 1:
-                    ev_tokens = ev_tokens[0:(self.config.max_len3 - 1)]
+                    ev_tokens = ev_tokens[0:(self.config.max_seq_length - len(op_info_tokens) - len(question_tokens) - 4)]
                 _tokens = []
                 _segment_ids = []
                 _tokens.append("[CLS]")
@@ -867,14 +866,14 @@ class MQATask(task.Task):
                 _input_ids = self._tokenizer.convert_tokens_to_ids(_tokens)
                 _input_mask = [1] * len(_input_ids)
 
-                while len(_input_ids) < self.max_seq_len:
+                while len(_input_ids) < self.config.max_seq_length:
                     _input_ids.append(0)
                     _input_mask.append(0)
                     _segment_ids.append(0)
 
-                assert len(_input_ids) == self.max_seq_len
-                assert len(_input_mask) == self.max_seq_len
-                assert len(_segment_ids) == self.max_seq_len
+                assert len(_input_ids) == self.config.max_seq_length
+                assert len(_input_mask) == self.config.max_seq_length
+                assert len(_segment_ids) == self.config.max_seq_length
                 tokens.append(_tokens)
                 input_ids.append(_input_ids)
                 input_mask.append(_input_mask)
@@ -884,9 +883,9 @@ class MQATask(task.Task):
         padding_num = self.config.max_options_num - len(options_tags)
         while padding_num:
             for _ in range(self.config.evidences_top_k):
-                input_ids.append([0] * self.max_seq_len)
-                input_mask.append([0] * self.max_seq_len)
-                segment_ids.append([0] * self.max_seq_len)
+                input_ids.append([0] * self.config.max_seq_length)
+                input_mask.append([0] * self.config.max_seq_length)
+                segment_ids.append([0] * self.config.max_seq_length)
             padding_num -= 1
 
         answer_ids = None

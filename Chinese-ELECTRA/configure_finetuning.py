@@ -98,7 +98,7 @@ class FinetuningConfig(object):
         self.answer_options = ["A", "B", "C", "D"]  # final answer options, sorted as normal
         self.max_len1 = 128  # max length of question
         self.max_len2 = 96  # max length of option
-        self.max_len3 = 288  # max length of evidence
+        # self.max_len3 = 288  # max length of evidence
 
         # TPU settings
         self.use_tpu = False
