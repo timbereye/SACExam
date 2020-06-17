@@ -991,7 +991,7 @@ class MQATask(task.Task):
 
         return loss, dict(
             loss=loss,
-            logits=logits_masked,
+            logits=logits,
             eid=features[self.name + "_eid"],
         )
 
