@@ -824,6 +824,7 @@ class MQATask(task.Task):
             feature_spec.FeatureSpec(self.name + "_eid", []),
             feature_spec.FeatureSpec(self.name + "_answer_mask", [2 ** self.config.max_options_num]),
             feature_spec.FeatureSpec(self.name + "_answer_ids", [2 ** self.config.max_options_num]),
+            feature_spec.FeatureSpec(self.name + "_answer_ids_raw", [self.config.max_options_num]),
         ]
 
     def featurize(self, example: MQAExample, is_training, log=False,
@@ -892,14 +893,16 @@ class MQATask(task.Task):
             padding_num -= 1
 
         answer_ids = None
+        answer_ids_raw = None
         if example.type == "0":
             answer_mask = [0] * (2 ** self.config.max_options_num)
             for i in range(len(options_tags)):
                 answer_mask[2 ** i] = 1
             if is_training:
                 answer_ids = [0] * (2 ** self.config.max_options_num)
+                answer_ids_raw = [0] * self.config.max_options_num
                 answer_ids[2 ** (options_tags.index(example.answers[0]))] = 1
-
+                answer_ids_raw[options_tags.index(example.answers[0])] = 1
         elif example.type == "1":
             answer_mask = [0] * (2 ** self.config.max_options_num)
             for _, comb_ops in example.combination_options.items():
@@ -909,9 +912,11 @@ class MQATask(task.Task):
                 answer_mask[index] = 1
             if is_training:
                 answer_ids = [0] * (2 ** self.config.max_options_num)
+                answer_ids_raw = [0] * self.config.max_options_num
                 index = 0
                 for comb_op in example.combination_options[example.answers[0]]:
                     index += 2 ** (options_tags.index(comb_op))
+                    answer_ids_raw[options_tags.index(comb_op)] = 1
                 answer_ids[index] = 1
         else:
             raise Exception("Not implemented for _type not in ('0', '1').")
@@ -952,6 +957,7 @@ class MQATask(task.Task):
         if is_training:
             features.update({
                 self.name + "_answer_ids": answer_ids,
+                self.name + "_answer_ids_raw": answer_ids_raw,
             })
 
         return [features]
@@ -984,11 +990,12 @@ class MQATask(task.Task):
         #     return logits_masked, loss
         # logits, loss = tf.cond()
 
-        logits = tf.squeeze(tf.layers.dense(final_hidden_reshape, 1, activation=tf.nn.relu), -1)
+        logits = tf.squeeze(tf.layers.dense(final_hidden_reshape, 1), -1)
+        loss1 = tf.nn.sigmoid_cross_entropy_with_logits(labels=features[self.name + "_answer_ids"], logits=logits)
         logits = tf.layers.dense(logits, 2 ** self.config.max_options_num)
         logits_masked = logits + 1e8 * tf.to_float(features[self.name + "_answer_mask"] - 1)
         loss = tf.nn.softmax_cross_entropy_with_logits(labels=features[self.name + "_answer_ids"], logits=logits)
-
+        loss = loss * 0.5 + loss1 * 0.5
         return loss, dict(
             loss=loss,
             logits=logits_masked,
