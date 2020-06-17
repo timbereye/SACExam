@@ -987,7 +987,7 @@ class MQATask(task.Task):
         logits = tf.squeeze(tf.layers.dense(final_hidden_reshape, 1), -1)
         logits = tf.layers.dense(logits, 2 ** self.config.max_options_num)
         logits_masked = logits + 1e8 * tf.to_float(features[self.name + "_answer_mask"] - 1)
-        loss = tf.nn.softmax_cross_entropy_with_logits(labels=features[self.name + "_answer_ids"], logits=logits_masked)
+        loss = tf.nn.softmax_cross_entropy_with_logits(labels=features[self.name + "_answer_ids"], logits=logits)
 
         return loss, dict(
             loss=loss,
