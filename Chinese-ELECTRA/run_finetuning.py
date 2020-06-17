@@ -140,11 +140,10 @@ def model_fn_builder(config: configure_finetuning.FinetuningConfig, tasks,
                 mode=mode,
                 loss=model.loss,
                 train_op=train_op,
-                scaffold_fn=scaffold_fn,
-                training_hooks=[training_utils.ETAHook(
-                    # {} if config.use_tpu else dict(loss=model.loss),
-                    dict(loss=model.loss),
-                    num_train_steps, config.iterations_per_loop, config.use_tpu, 10)])
+                scaffold_fn=scaffold_fn,)
+                # training_hooks=[training_utils.ETAHook(
+                #     {} if config.use_tpu else dict(loss=model.loss),
+                #     num_train_steps, config.iterations_per_loop, config.use_tpu, 10)])
         else:
             assert mode == tf.estimator.ModeKeys.PREDICT
             output_spec = tf.estimator.tpu.TPUEstimatorSpec(
