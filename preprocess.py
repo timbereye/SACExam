@@ -42,13 +42,15 @@ JSON_DATA = {"key":"", "subject":"", "source":"", "type":"", "question":"", "opt
 
 ROMAN = ["Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ", "Ⅷ", "Ⅸ"]
 
+SERIAL = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
+
 
 def parse_options_lines(lines):
-    if re.match(r"A[.、,，]", lines[0]): # 单选题
+    if re.match(r"A[.、,，\s+]", lines[0]): # 单选题
         question_type = "single"
         options = {}
         for line in lines:
-            matcher = re.match(r"([ABCD])[.、,，](.*)", line)
+            matcher = re.match(r"([ABCD])[.、,，\s+](.*)", line)
             if matcher:
                 option_abc = matcher.group(1)
                 option_content = matcher.group(2)
@@ -59,43 +61,55 @@ def parse_options_lines(lines):
         if len(options) != 4:  # ABCD缺失
             print(lines, options)
             return None, None, None
+        if set("".join(options.values())) & set("".join(ROMAN + SERIAL)):  # 解析有误
+            print("解析有误，单答案出现了特殊字符", lines, options)
+            return None, None, None
         return question_type, options, None
-    elif re.match(r"Ⅰ[.、,，]", lines[0]):  # 单项组合选择题
+    elif re.match(r"Ⅰ[.、,，\s+]|①", lines[0]):  # 单项组合选择题
         question_type = "combination"
         options = {}
         combination_options = {}
         text_op = ""
         lines_comb = ""
         for i, line in enumerate(lines):
-            if not re.match(r"A[.、,，]", line):
+            if not re.match(r"A[.、,，\s+]", line):
                 text_op += line
             else:
                 lines_comb = lines[i:]
                 break
-        re_exp_op = re.compile("([{0}])[.、,，]([^{0}]*)".format("".join(ROMAN)))
+        re_exp_op = re.compile("([{0}])[.、,，\s+]*([^{0}]*)".format("".join(ROMAN+SERIAL)))
         for option_roman, option_content in re.findall(re_exp_op, text_op):
             options[option_roman] = option_content
         assert len(options) >= 3, lines
         for line in lines_comb:
-            matcher = re.match(r"([ABCD])[.、,，](.*)", line)
+            matcher = re.match(r"([ABCD])[.、,，\s+](.*)", line)
             if matcher:
                 option_abc = matcher.group(1)
                 option_content = matcher.group(2)
-                option_contents = re.split(r"[.、,，;；]", option_content)
-                option_contents = [x for x in option_contents if x]
-                flag = False  # 检查罗马数字是否有误，丢弃脏数据
-                for i, oc in enumerate(option_contents):
-                    if oc not in ROMAN:
-                        if oc == "I":  # fix error
-                            option_contents[i] = "Ⅰ"
-                        else:
-                            flag = True
+                flag = False  # 丢弃脏数据
+                if re.match("[{}]".format("".join(SERIAL)), option_content):
+                    option_contents = list(option_content)
+                    for op in option_contents:
+                        if op not in SERIAL or op not in options:
                             print(lines)
-                            print(option_abc)
-                            print(option_content)
-                            print(option_contents)
-                            break
-                if flag:
+                            return None, None, None
+                else:
+                    option_contents = re.split(r"[.、,，;；]", option_content)
+                    option_contents = [x for x in option_contents if x]
+                    for i, oc in enumerate(option_contents):
+                        if oc not in ROMAN:
+                            if oc == "I":  # fix error
+                                option_contents[i] = "Ⅰ"
+                            else:
+                                flag = True
+                                print(lines)
+                                print(option_abc)
+                                print(option_content)
+                                print(option_contents)
+                                break
+                        elif oc not in options:  # some options loss error
+                            return None, None, None
+                if flag or len(option_contents) != len(set(option_contents)):  # 组合选项的子选项有误
                     return None, None, None
                 combination_options[option_abc] = option_contents
 
@@ -142,7 +156,7 @@ def process(input_file_pattern, subject="financial", source="true"):
                         question = lines[line_no].lstrip(str(question_index)+"、")
                         line_no += 1
                         while line_no < len(lines):
-                            if not re.match(r"[AⅠ][.、,，]", lines[line_no]):
+                            if not re.match(r"[AⅠ][.、,，\s+]|①", lines[line_no]):
                                 question += lines[line_no]
                                 line_no += 1
                             else:
@@ -213,8 +227,23 @@ def check_reduplicate(examples):
         if info not in infos:
             infos.add(info)
             examples_new.append(example)
-        # else:
-        #     print(info)
+    return examples_new
+
+
+def check_reduplicate_sets(examples1, examples2):
+    # examples1 - examples2
+    examples_new = []
+    infos = set()
+    for example in examples2:
+        info = example["question"] + str(sorted(example["options"].items(), key=lambda x:x[0])) +\
+               str(sorted(example["combination_options"].items(), key=lambda x:x[0]))
+        if info not in infos:
+            infos.add(info)
+    for example in examples1:
+        info = example["question"] + str(sorted(example["options"].items(), key=lambda x:x[0])) +\
+               str(sorted(example["combination_options"].items(), key=lambda x:x[0]))
+        if info not in infos:
+            examples_new.append(example)
     return examples_new
 
 
@@ -230,7 +259,7 @@ def maomin_data_process(input_file_pattern):
                 data.append(json.loads(line))
             # 构造成试卷格式以复用处理代码, 以及清洗数据
             for i, d in enumerate(data):
-                tmp = ["{}、{}".format(i+1, re.sub(r"91速过.*", "", d["query"].replace("\r\n", "\n").replace("Ⅰ", "\nⅠ"))),
+                tmp = ["{}、{}".format(i+1, re.sub(r"91速过.*", "", d["query"].replace("\r\n", "\n").replace("Ⅰ", "\nⅠ").replace("①", "\n①"))),
                        re.sub(r"([ABCD])([、.,，:])", r"\n\1、", re.sub(r"&nbsp;|<br/>", "", d["candidates"])),
                        "答案：{}".format(d["std_an"]),
                        "解析：{}".format(re.sub(r"^【[答案及和与解析]+】", "", re.sub(r"\s+|91速过.*", "", d["an_parse"])))]
@@ -240,33 +269,73 @@ def maomin_data_process(input_file_pattern):
         return examples
 
 
-
-
 def main():
+    # input_file_pattern = "data/financial/mock/*.txt"
+    # examples1 = process(input_file_pattern, subject="financial", source="mock")
+    # input_file_pattern = "data/financial/true/*.txt"
+    # examples2 = process(input_file_pattern, subject="financial", source="true")
+    # input_file_pattern = "data/law/mock/*.txt"
+    # examples3 = process(input_file_pattern, subject="law", source="mock")
+    # input_file_pattern = "data/law/true/*.txt"
+    # examples4 = process(input_file_pattern, subject="law", source="true")
+    #
+    # input_file_pattern = "data/merge.json"
+    # examples5 = maomin_data_process(input_file_pattern)
+    #
+    # total_examples = []
+    # for examples in [examples1, examples2, examples3, examples4, examples5]:
+    #     for examples_ in examples:
+    #         total_examples += examples_
+    # print("total examples:", len(total_examples))
+    #
+    # total_examples = check_reduplicate(total_examples)
+    # print("unique total examples:", len(total_examples))
+    #
+    # with open("data/data.json", 'w', encoding="utf-8") as fp:
+    #     for ex in total_examples:
+    #         fp.write(json.dumps(ex, ensure_ascii=False) + "\n")
+
+    # # 将2019年真题作为验证集，其余作为训练集
     input_file_pattern = "data/financial/mock/*.txt"
     examples1 = process(input_file_pattern, subject="financial", source="mock")
-    input_file_pattern = "data/financial/true/*.txt"
+    input_file_pattern = "data/financial/true/201[6-8]*.txt"
     examples2 = process(input_file_pattern, subject="financial", source="true")
     input_file_pattern = "data/law/mock/*.txt"
     examples3 = process(input_file_pattern, subject="law", source="mock")
-    input_file_pattern = "data/law/true/*.txt"
+    input_file_pattern = "data/law/true/201[6-8]*.txt"
     examples4 = process(input_file_pattern, subject="law", source="true")
 
     input_file_pattern = "data/merge.json"
     examples5 = maomin_data_process(input_file_pattern)
 
-    total_examples = []
+    train_examples = []
     for examples in [examples1, examples2, examples3, examples4, examples5]:
         for examples_ in examples:
-            total_examples += examples_
-    print("total examples:", len(total_examples))
+            train_examples += examples_
 
-    total_examples = check_reduplicate(total_examples)
-    print("unique total examples:", len(total_examples))
+    input_file_pattern = "data/financial/true/2019*.txt"
+    examples1 = process(input_file_pattern, subject="financial", source="true")
+    input_file_pattern = "data/law/true/2019*.txt"
+    examples2 = process(input_file_pattern, subject="law", source="true")
 
-    with open("data/data.json", 'w', encoding="utf-8") as fp:
-        for ex in total_examples:
-            fp.write(json.dumps(ex, ensure_ascii=False) + "\n")
+    dev_examples = []
+    for examples in [examples1, examples2]:
+        for examples_ in examples:
+            dev_examples += examples_
+
+    dev_examples = check_reduplicate(dev_examples)
+    print("dev examples:", len(dev_examples))
+
+    train_examples = check_reduplicate_sets(train_examples, dev_examples)
+    train_examples = check_reduplicate(train_examples)
+    dev_examples = check_reduplicate(dev_examples)
+    print("train examples:", len(train_examples))
+
+    with open("data/train.json", 'w', encoding="utf-8") as fpt, open("data/dev.json", 'w', encoding="utf-8") as fpd:
+        for ex in train_examples:
+            fpt.write(json.dumps(ex, ensure_ascii=False) + "\n")
+        for ex in dev_examples:
+            fpd.write(json.dumps(ex, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":
